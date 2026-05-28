@@ -132,9 +132,35 @@ else
   fi
 fi
 
-# ---------- 4. install.py ----------
+# ---------- 4. install.py (with TLS-cert priming) ----------
+ok "Priming TLS certificate trust store (fixes 'failed to locate issuer certificate')..."
+
+# Run python.org Python's Install Certificates.command if it exists. This
+# handles the case where the friend has a python.org Python installation
+# alongside the brew one and pip happens to pick the python.org one.
+for clicmd in /Applications/Python\ 3.13/Install\ Certificates.command \
+              /Applications/Python\ 3.12/Install\ Certificates.command \
+              /Applications/Python\ 3.11/Install\ Certificates.command; do
+  if [[ -f "$clicmd" ]]; then
+    ok "Found python.org Install Certificates.command — running it..."
+    bash "$clicmd" 2>&1 | tail -3 || true
+  fi
+done
+
+# Pre-install certifi so install.py's _install_ssl_context_with_certifi
+# finds it on first try (without that, install.py tries a recursive pip
+# install of certifi — which itself can hit the same TLS error).
+ok "Pre-installing certifi to chosen Python..."
+"$PYTHON" -m pip install --quiet --upgrade pip certifi
+
+# Export SSL_CERT_FILE so any urllib in this shell or its children trusts
+# certifi's bundle. install.py also sets this internally, but exporting
+# here covers the case where pip itself is the failing layer.
+export SSL_CERT_FILE="$("$PYTHON" -c 'import certifi; print(certifi.where())')"
+export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
+ok "SSL_CERT_FILE = $SSL_CERT_FILE"
+
 ok "Running install.py (pip deps + LabRecorder download)..."
-"$PYTHON" -m pip install --quiet --upgrade pip
 "$PYTHON" "$REPO/install.py"
 
 # ---------- 5. Gatekeeper quarantine strip on the downloaded LabRecorder ----------
