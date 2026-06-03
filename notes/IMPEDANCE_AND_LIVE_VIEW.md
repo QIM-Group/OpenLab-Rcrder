@@ -1,7 +1,7 @@
 # Impedance check + live view (added 2026-06-02)
 
-Both capabilities were missing from this headless bridge. Source survey + adoption
-record: `VSC_Artificial_Intelligence/references/landscapes/openbci_impedance_streaming/INDEX.md`.
+Both capabilities were missing from this headless bridge. Upstream source
+attribution for the adapted code is in [`../CREDITS.md`](../CREDITS.md).
 
 ## Impedance check — `src/impedance_check.py` (new, runnable)
 
@@ -32,4 +32,5 @@ mne-lsl viewer            # discovers the "OpenBCI_EEG" outlet this bridge publi
 
 Alternative (in-process strip): adapt BrainFlow's `python_package/examples/plot_real_time/`
 (MIT, PyQtGraph). ~40 lines reading `board.get_current_board_data(n)` into a rolling plot.
-Do NOT vendor neuromore (AGPL+non-commercial) or NeuroPype (proprietary) — see INDEX.md.
+Do NOT vendor neuromore (AGPL + non-commercial) or NeuroPype (proprietary) — license
+incompatible with this MIT project.

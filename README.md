@@ -51,6 +51,25 @@ LabRecorder itself is not redistributed here; download it from its release page
 
 ## Install
 
+### One-click (recommended)
+
+Clone the repo, then run the installer for your operating system. Each one
+installs Python (if missing), the Python dependencies, the native `liblsl`
+library, and the matching LabRecorder build into `vendor/`, and creates a
+double-click launcher.
+
+| Operating system | Install | Launch |
+|---|---|---|
+| **Windows** | double-click `INSTALL_Windows.bat` | `LAUNCH_Windows.bat` (or the Desktop icon) |
+| **macOS** | double-click `INSTALL_macOS.command` | `LAUNCH_macOS.command` (or the Desktop icon) |
+| **Linux** (Ubuntu 24.04) | run `./INSTALL_Linux.sh` | `./LAUNCH_Linux.sh` (or the Desktop / menu entry) |
+
+The launcher auto-detects the OpenBCI dongle, opens LabRecorder, and starts the
+bridge. It opens LabRecorder even when no dongle is plugged in, so you can browse
+past recordings and configure the study folder without the hardware.
+
+### Manual
+
 One command — installs the Python dependencies and downloads the matching
 LabRecorder build into `vendor/` (Windows / macOS / Linux):
 
@@ -58,14 +77,16 @@ LabRecorder build into `vendor/` (Windows / macOS / Linux):
 python install.py
 ```
 
-Or do it by hand:
+Or fully by hand:
 
 ```bash
 pip install -r requirements.txt   # then download LabRecorder from its release page (link above)
 ```
 
-`pylsl` needs the native `liblsl`. On Windows the pip wheel bundles it; on Linux
-install `liblsl` separately (for example via conda-forge).
+`pylsl` needs the native `liblsl`. On Windows the pip wheel bundles it; on macOS
+install it via `brew install labstreaminglayer/tap/lsl`; on Linux install
+`liblsl` separately (the Ubuntu installer fetches the matching `.deb`, or use
+conda-forge).
 
 ## Use
 
@@ -126,3 +147,6 @@ open tools.
 MIT — see [LICENSE](LICENSE). Free to use, modify, and redistribute, including
 for research. The upstream components retain their own licenses (MIT for
 BrainFlow, Lab Streaming Layer, and LabRecorder; BSD-2-Clause for pyxdf).
+
+Full third-party attribution — every project this bridge depends on or adapts,
+with its license and link — is in [CREDITS.md](CREDITS.md).
