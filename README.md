@@ -142,6 +142,10 @@ With thanks to **OpenBCI** for open biosensing hardware, and to the
 transport stack this bridge connects. This project would not exist without their
 open tools.
 
+Built with time donated by **QIM Group volunteers**, and catalyzed by the
+**Consciousness Studies Club** and its brain-computer-interface lab, whose
+research environment and recording needs sparked this work.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Free to use, modify, and redistribute, including
