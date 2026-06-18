@@ -99,8 +99,8 @@ $SUDO apt-get install -y python3 python3-venv python3-pip ca-certificates
 # plus the xcb platform plugin. A fresh Ubuntu 24.04 / Mint 22.x ships none of
 # these, so LabRecorder exits instantly with no window ("launcher runs in the
 # terminal but no GUI appears"). On noble the Qt6 packages carry the t64 suffix.
-ok "Installing LabRecorder's Qt6 GUI runtime (Qt6 widgets/network + xcb plugin)..."
-$SUDO apt-get install -y libqt6widgets6t64 libqt6network6t64 qt6-qpa-plugins libxcb-cursor0 \
+ok "Installing LabRecorder's Qt6 GUI runtime (Qt6 widgets/network + xcb plugin + pugixml)..."
+$SUDO apt-get install -y libqt6widgets6t64 libqt6network6t64 qt6-qpa-plugins libxcb-cursor0 libpugixml1v5 \
   || warn "Qt6 runtime install failed — LabRecorder's window may not open (see scripts/diagnose_linux.sh)."
 
 PYBASE="$(command -v python3)"
@@ -120,6 +120,9 @@ ok "Upgrading pip inside the virtual environment..."
 
 # ---------- 3. install.py (pip deps + LabRecorder download) ----------
 ok "Running install.py (pip dependencies + LabRecorder download)..."
+# Remove any stale LabRecorder (e.g. an older 1.17 build that needs Qt 6.8) so the
+# correct Qt-6.4-compatible 1.16.4 build is fetched fresh.
+rm -rf "$REPO/vendor/LabRecorder"
 "$PYTHON" "$REPO/install.py"
 
 # Ensure the downloaded LabRecorder binary is executable (tar should preserve the
@@ -137,10 +140,12 @@ LIBLSL_URL="https://github.com/sccn/liblsl/releases/download/v${LIBLSL_VER}/${LI
 
 pylsl_ok() { "$PYTHON" -c "import pylsl" >/dev/null 2>&1; }
 
-if pylsl_ok; then
-  ok "pylsl imports cleanly (liblsl already available)."
-else
-  warn "pylsl could not import liblsl — installing the native library..."
+# liblsl is needed by BOTH pylsl AND the LabRecorder binary (a system shared
+# library, separate from the copy the pylsl wheel may bundle into the venv). The
+# LabRecorder GUI fails to start without system liblsl, so install it
+# unconditionally rather than only when pylsl's import fails.
+if true; then
+  warn "Installing native liblsl (needed by pylsl and the LabRecorder GUI)..."
   TMPDEB="$(mktemp -d)/${LIBLSL_DEB}"
   if "$PYTHON" - "$LIBLSL_URL" "$TMPDEB" <<'PYEOF'
 import ssl, sys, urllib.request

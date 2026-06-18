@@ -61,13 +61,18 @@ HERE = Path(__file__).resolve().parent
 VENDOR = HERE / "vendor" / "LabRecorder"
 REQS = HERE / "requirements.txt"
 
-LABRECORDER_VER = "v1.17.1"
-BASE = f"https://github.com/labstreaminglayer/App-LabRecorder/releases/download/{LABRECORDER_VER}/"
-# Asset per platform (filenames verified against the v1.17.1 release).
-ASSETS = {
-    "Windows": "LabRecorder-1.17.0-Win_amd64.zip",
-    "Darwin": "LabRecorder-1.17.0-macOS_universal-signed.tar.gz",
-    "Linux": "LabRecorder-1.17.0-noble_amd64.tar.gz",
+_REL = "https://github.com/labstreaminglayer/App-LabRecorder/releases/download"
+# Per-platform LabRecorder build.
+#   Windows / macOS: self-contained 1.17.1 builds (they bundle their own Qt).
+#   Linux: MUST be 1.16.4, NOT 1.17.x. The 1.17.x Linux builds are linked against
+#   Qt 6.8, which Ubuntu 24.04 / Mint 22.x do NOT ship (stock Qt is 6.4); they
+#   start with no window ("libQt6Core.so.6: version Qt_6.8 not found"). The 1.16.4
+#   build links Qt 6.4 and runs against the distro Qt that install_linux.sh pulls
+#   in. It ships only as a .deb (no 1.16.4 tarball); we extract it into vendor/.
+ASSET_URLS = {
+    "Windows": f"{_REL}/v1.17.1/LabRecorder-1.17.0-Win_amd64.zip",
+    "Darwin":  f"{_REL}/v1.17.1/LabRecorder-1.17.0-macOS_universal-signed.tar.gz",
+    "Linux":   f"{_REL}/v1.16.5/LabRecorder-1.16.4-noble_amd64.deb",
 }
 
 
@@ -77,16 +82,16 @@ def install_deps() -> None:
 
 
 def fetch_labrecorder(force: bool) -> None:
-    asset = ASSETS.get(platform.system())
-    if asset is None:
+    url = ASSET_URLS.get(platform.system())
+    if url is None:
         print(f"[labrecorder] no prebuilt asset mapped for {platform.system()}; "
-              f"download manually from {BASE}")
+              f"download manually from {_REL}")
         return
-    if VENDOR.exists() and any(VENDOR.rglob("LabRecorder*")) and not force:
+    asset = url.rsplit("/", 1)[1]
+    if VENDOR.exists() and any(p.is_file() for p in VENDOR.rglob("LabRecorder")) and not force:
         print(f"[labrecorder] already present in {VENDOR} (use --force to re-download)")
         return
     VENDOR.mkdir(parents=True, exist_ok=True)
-    url = BASE + asset
     archive = VENDOR / asset
     print(f"[labrecorder] downloading {url}")
     urllib.request.urlretrieve(url, archive)
@@ -94,11 +99,18 @@ def fetch_labrecorder(force: bool) -> None:
     if asset.endswith(".zip"):
         with zipfile.ZipFile(archive) as z:
             z.extractall(VENDOR)
+    elif asset.endswith(".deb"):
+        # A .deb is an `ar` archive; dpkg-deb (present on Debian/Ubuntu/Mint)
+        # unpacks its file tree → vendor/.../usr/bin/LabRecorder. The binary
+        # links the system Qt6 / liblsl / pugixml that install_linux.sh installs.
+        subprocess.check_call(["dpkg-deb", "-x", str(archive), str(VENDOR)])
     else:
         with tarfile.open(archive) as t:
             t.extractall(VENDOR)
     archive.unlink()
-    exe = next(VENDOR.rglob("LabRecorder*"), None)
+    exe = next((p for p in VENDOR.rglob("LabRecorder") if p.is_file()), None)
+    if exe is not None:
+        exe.chmod(exe.stat().st_mode | 0o111)
     print(f"[labrecorder] ready: {exe}")
 
 
