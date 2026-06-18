@@ -183,6 +183,9 @@ echo "$VERIFY_OUTPUT"
 if echo "$VERIFY_OUTPUT" | grep -q "\[FAIL\]"; then
   err "One or more runtime dependencies failed to import."
   err "Most common cause on Linux: liblsl not found (see the liblsl step above)."
+  echo
+  warn "Full self-diagnostic (dependencies + serial/dongle state):"
+  bash "$REPO/scripts/diagnose_linux.sh" || true
   exit 6
 fi
 ok "All runtime dependencies verified."
@@ -292,4 +295,7 @@ if [[ "${NEED_RELOGIN:-0}" -eq 1 ]]; then
 else
   ok "Serial-port access (dialout group + brltty) already handled above."
 fi
+echo
+ok "Self-diagnostic (re-runnable any time with: bash scripts/diagnose_linux.sh)"
+bash "$REPO/scripts/diagnose_linux.sh" || true
 exit 0
