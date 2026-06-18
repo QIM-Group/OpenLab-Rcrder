@@ -94,6 +94,15 @@ $SUDO apt-get update -y
 ok "Installing python3, python3-venv, python3-pip, ca-certificates..."
 $SUDO apt-get install -y python3 python3-venv python3-pip ca-certificates
 
+# LabRecorder (the recording window) is a Qt6 application and bundles NO Qt of
+# its own — its binary is dynamically linked against libQt6Widgets/Gui/Core/Network
+# plus the xcb platform plugin. A fresh Ubuntu 24.04 / Mint 22.x ships none of
+# these, so LabRecorder exits instantly with no window ("launcher runs in the
+# terminal but no GUI appears"). On noble the Qt6 packages carry the t64 suffix.
+ok "Installing LabRecorder's Qt6 GUI runtime (Qt6 widgets/network + xcb plugin)..."
+$SUDO apt-get install -y libqt6widgets6t64 libqt6network6t64 qt6-qpa-plugins libxcb-cursor0 \
+  || warn "Qt6 runtime install failed — LabRecorder's window may not open (see scripts/diagnose_linux.sh)."
+
 PYBASE="$(command -v python3)"
 ok "System Python: $PYBASE ($("$PYBASE" --version 2>&1))"
 
