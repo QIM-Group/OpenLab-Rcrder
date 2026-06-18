@@ -28,7 +28,11 @@
 #      is best-effort: if the asset name has changed upstream, the script points
 #      you at the releases page and the conda-forge fallback.
 #
-#   5. Desktop launcher — a .desktop entry (Terminal=true) so OpenLab Recorder is
+#   5b. Serial access — brltty (the default braille service) hijacks the FTDI
+#      dongle on Ubuntu/Mint so /dev/ttyUSB* never persists; we remove it. The
+#      user is added to the 'dialout' group so BrainFlow can open the port.
+#
+#   6. Desktop launcher — a .desktop entry (Terminal=true) so OpenLab Recorder is
 #      double-clickable from the desktop and the applications menu. Bare .sh files
 #      are not reliably double-clickable across Linux desktop environments, so the
 #      .desktop file is the correct native affordance.
@@ -183,6 +187,56 @@ if echo "$VERIFY_OUTPUT" | grep -q "\[FAIL\]"; then
 fi
 ok "All runtime dependencies verified."
 
+# ---------- 5b. Serial-port access: brltty FTDI grab + dialout group ----------
+# Two failure modes specific to the OpenBCI FTDI dongle (USB ID 0403:6015) on
+# Ubuntu/Mint that otherwise stop the bridge dead, fixed here so a fresh machine
+# works without manual follow-up:
+#
+#   - brltty (a braille service installed by default) claims FT231X-class FTDI
+#     adapters the instant they are plugged in, so /dev/ttyUSB* appears then
+#     vanishes and the launcher reports "No serial dongle detected."
+#     (Ubuntu bug #1976534.) Removing the package deletes the udev rule that does
+#     the grab; masking the service alone does not. This tool exists to talk to an
+#     FTDI serial dongle, so brltty's serial grab is pure interference here.
+#
+#   - Opening /dev/ttyUSB* requires membership in the 'dialout' group; without it
+#     BrainFlow fails prepare_session() with "unable to open port".
+
+NEED_RELOGIN=0
+
+if have lsusb && lsusb | grep -qiE '0403:6015|FT231X'; then
+  ok "OpenBCI FTDI dongle (0403:6015) detected on USB."
+fi
+
+if dpkg -s brltty >/dev/null 2>&1; then
+  warn "Removing 'brltty' — it hijacks the FTDI serial dongle on Ubuntu/Mint."
+  warn "    (Braille users can reinstall later with: sudo apt-get install brltty)"
+  $SUDO systemctl stop brltty brltty-udev 2>/dev/null || true
+  $SUDO systemctl mask brltty brltty-udev 2>/dev/null || true
+  if $SUDO apt-get remove -y brltty; then
+    ok "brltty removed; unplug and replug the dongle so /dev/ttyUSB* persists."
+  else
+    warn "Could not remove brltty automatically. If the dongle is not detected,"
+    warn "remove it manually:   sudo apt-get remove brltty"
+  fi
+else
+  ok "brltty not installed — nothing to neutralise."
+fi
+
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+if id -nG "$TARGET_USER" 2>/dev/null | grep -qw dialout; then
+  ok "User '$TARGET_USER' is already in the 'dialout' group (serial access OK)."
+else
+  ok "Adding '$TARGET_USER' to the 'dialout' group (needed to open /dev/ttyUSB*)..."
+  if $SUDO usermod -aG dialout "$TARGET_USER"; then
+    NEED_RELOGIN=1
+    ok "Added. Takes effect after a full log out / log in (or reboot)."
+  else
+    warn "Could not add '$TARGET_USER' to dialout. Run it manually:"
+    warn "    sudo usermod -aG dialout $TARGET_USER"
+  fi
+fi
+
 # ---------- 6. Desktop launcher (.desktop entry) ----------
 LAUNCH_SH="$REPO/LAUNCH_Linux.sh"
 chmod +x "$LAUNCH_SH" 2>/dev/null || true
@@ -231,6 +285,11 @@ ok "    - start the bridge"
 ok "  In LabRecorder, pick 'OpenBCI_EEG' and press Start."
 ok "=================================================================="
 ok ""
-ok "Serial-port permissions: if the dongle is not detected, add yourself to the"
-ok "'dialout' group once:   sudo usermod -aG dialout \"\$USER\"   then log out/in."
+if [[ "${NEED_RELOGIN:-0}" -eq 1 ]]; then
+  warn "IMPORTANT: you were just added to the 'dialout' group. LOG OUT and back in"
+  warn "(or reboot) before launching, or the dongle will fail with 'unable to open"
+  warn "port'. In a pinch, run the launcher from a shell started with: newgrp dialout"
+else
+  ok "Serial-port access (dialout group + brltty) already handled above."
+fi
 exit 0

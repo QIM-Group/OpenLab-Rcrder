@@ -11,7 +11,9 @@
 #    2. Creates a repo-local .venv (Ubuntu 24.04 forbids pip into system Python).
 #    3. Runs install.py (pip deps + LabRecorder download into vendor/).
 #    4. Installs the native liblsl library if pylsl can't find it.
-#    5. Creates a double-click "OpenLab Recorder" launcher on the Desktop and in
+#    5. Frees the FTDI serial dongle (removes brltty, which hijacks it on
+#       Ubuntu/Mint) and grants serial-port access (adds you to 'dialout').
+#    6. Creates a double-click "OpenLab Recorder" launcher on the Desktop and in
 #       the applications menu.
 #
 #  The window stays open at the end (when run interactively) so you can read any
